@@ -1,9 +1,11 @@
 renames files using regular expressions
 
+```
 Usage of remrep:
   -p="": replacement
   -r="": regex
   -t=false: do not move for realz, only print
+```
   
 Sample usage:
 ```

@@ -1,5 +1,6 @@
 Searches files by filename and content using regular expressions
 
+```
 Usage of search:
   -a=false: only show absolute paths
   -b=".": the base directory
@@ -8,4 +9,4 @@ Usage of search:
   -ic=false: ignore case in contains regex
   -is=false: ignore case in file regex
   -s="": regex of file(s) to search for
-  
+```
