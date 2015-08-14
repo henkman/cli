@@ -2,7 +2,9 @@ Searches files by filename and content using regular expressions
 (port of search to C)
 
 Build with 
-$ gcc -Wall -o pose pose.c -O3 -s -nostdlib -fno-asynchronous-unwind-tables -fno-ident -ffunction-sections -static -Wl,-e,__main -lkernel32 -lshlwapi
+```
+gcc -Wall -std=gnu11 -pedantic -o pose pose.c -O3 -s -nostdlib -fno-asynchronous-unwind-tables -fno-ident -ffunction-sections -static -Wl,-e,_main
+```
 
 ```
 Usage of pose:

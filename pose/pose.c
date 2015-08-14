@@ -58,22 +58,6 @@ static char *bstrcat(char *dst, const char *src)
 	return dst;
 }
 
-static char *findlast(const char *s, char c)
-{
-	char *p = (char *)s;
-	while(*p) {
-		p++;
-	}
-	p--;
-	while(p != s) {
-		if(*p == c) {
-			return p;
-		}
-		p--;
-	}
-	return NULL;
-}
-
 static int endswith(const char *s, char c)
 {
 	while(*s) {
@@ -83,7 +67,8 @@ static int endswith(const char *s, char c)
 	return *s == c;
 }
 
-static void args_make(Arg *arg, ArgType type, char *key) {
+static void args_make(Arg *arg, ArgType type, char *key)
+{
 	arg->type = type;
 	arg->key = key;
 	if(type == ArgBool) {
@@ -94,90 +79,100 @@ static void args_make(Arg *arg, ArgType type, char *key) {
 	}
 }
 
-static void args_get(Arg **args, int count)
+static void args_get(Arg **args, int count, const char *cmdline)
 {
-	static char cmdline[8*1024];
+	static char cmd[8*1024];
 	int i, o, n, ignorespace;
 	Arg *key;
-	bstrcpy(cmdline, GetCommandLine());
+
+	lstrcpy(cmd, cmdline);
+
+	/* parse program name */
 	o = 0;
-	while(cmdline[o] && cmdline[o] != ' ') o++;
-	cmdline[o] = 0;
-	for(i=0;i<count;i++) {
+	while(cmd[o] && cmd[o] != ' ') {
+		o++;
+	}
+	cmd[o] = 0;
+	for(i=0; i<count; i++) {
 		if(args[i]->type == ArgProg) {
-			args[i]->value = &cmdline[0];
+			args[i]->value = &cmd[0];
 			args[i]->len = o;
 			break;
 		}
 	}
 	o++;
-	if(!cmdline[o]) {
+	if(!cmd[o]) {
 		return;
 	}
-	while(cmdline[o] == ' ' || cmdline[o] == '\t') o++;
+	while(cmd[o] == ' ' || cmd[o] == '\t') {
+		o++;
+	}
+
+	/* begin key value pairs */
 	key = NULL;
 	n = o;
 	ignorespace = 0;
-	while(cmdline[o]) {
-		if(cmdline[o] == '"') {
+	while(cmd[o]) {
+		if(cmd[o] == '"') {
 			ignorespace = !ignorespace;
 			o++;
-		} else if(cmdline[o] == ' ' && !ignorespace) {
-			cmdline[o] = 0;
+		} else if(cmd[o] == ' ' && !ignorespace) {
+			cmd[o] = 0;
 			if(key) {
-				key->value = &cmdline[n];
+				key->value = &cmd[n];
 				key->len = o-n;
 				if(key->value[0] == '"') {
 					key->value++;
 					key->len--;
 				}
 				if(key->value[key->len-1] == '"') {
-					key->value[key->len-1] = 0;
-					key->len--;
+					key->value[--key->len] = 0;
 				}
 				key = NULL;
 			} else {
-				for(i=0;i<count;i++) {
-					if(lstrcmp(args[i]->key, &cmdline[n]) == 0) {
-						key = args[i];
+				for(i=0; i<count; i++) {
+					if(lstrcmp(args[i]->key, &cmd[n]) == 0) {
+						if(args[i]->type == ArgBool) {
+							args[i]->isset = 1;
+						} else {
+							key = args[i];
+						}
 						break;
 					}
 				}
-				if(key && key->type == ArgBool) {
-					key->isset = 1;
-					key = NULL;
-				}
 			}
 			o++;
-			if(!cmdline[o]) {
+			if(!cmd[o]) {
 				break;
 			}
-			while(cmdline[o] == ' ' || cmdline[o] == '\t') o++;
+			while(cmd[o] == ' ' || cmd[o] == '\t') {
+				o++;
+			}
 			n = o;
 		} else {
 			o++;
-		}	
+		}
 	}
+
+	/* the last value, if any */
 	if(key) {
-		key->value = &cmdline[n];
+		key->value = &cmd[n];
 		key->len = o-n;
 		if(key->value[0] == '"') {
 			key->value++;
 			key->len--;
 		}
 		if(key->value[key->len-1] == '"') {
-			key->value[key->len-1] = 0;
-			key->len--;
+			key->value[--key->len] = 0;
 		}
 	} else {
-		for(i=0;i<count;i++) {
-			if(lstrcmp(args[i]->key, &cmdline[n]) == 0) {
-				key = args[i];
+		for(i=0; i<count; i++) {
+			if(lstrcmp(args[i]->key, &cmd[n]) == 0) {
+				if(args[i]->type == ArgBool) {
+					args[i]->isset = 1;
+				}
 				break;
 			}
-		}
-		if(key && key->type == ArgBool) {
-			key->isset = 1;
 		}
 	}
 }
@@ -200,11 +195,6 @@ static unsigned long console_write(Console *c, const void *msg, size_t len)
 	return n;
 }
 
-static unsigned long console_print(Console *c, const void *msg)
-{
-	return console_write(c, msg, lstrlen(msg));
-}
-
 static unsigned long console_put(Console *c, const char b)
 {
 	char msg[1] = {b};	
@@ -218,47 +208,17 @@ static unsigned long console_println(Console *c, const void *msg)
 	return n + console_put(c, '\n');
 }
 
-static int finder_init(Finder *f, Console *c,
-	char *search, char *contains,
-	int stoponfirst, int absolutepath,
-	int searchignorecase, int containsignorecase)
-{
-	f->c = c;
-	f->search = search;
-	if(contains) {
-		f->contains = contains;
-	} else {
-		f->contains = NULL;
-	}
-	f->stoponfirst = stoponfirst;
-	f->absolutepath = absolutepath;
-	f->searchignorecase = searchignorecase;
-	f->containsignorecase = containsignorecase;
-	return 1;
-}
-
 static void finder_find(Finder *f, const char *basedir)
 {
 	char path[MAX_PATH] = {0};
 	WIN32_FIND_DATA fd;
 	HANDLE hfind = NULL;
-	if(lstrcmp(basedir, ".") == 0) {
-		GetCurrentDirectory(sizeof(path), path);
-		bstrcat(path, "\\*");
-	} else if(lstrcmp(basedir, "..") == 0) {
-		GetCurrentDirectory(sizeof(path), path);
-		char *bs = findlast(path, '\\');
-		if(bs) {
-			*bs = 0;
-		}
-		bstrcat(path, "\\*");
+	
+	char *pathend = bstrcpy(path, basedir);
+	if(!endswith(path, '\\')) {
+		bstrcat(pathend, "\\*");
 	} else {
-		char *pathend = bstrcpy(path, basedir);
-		if(!endswith(path, '\\')) {
-			bstrcat(pathend, "\\*");
-		} else {
-			bstrcat(pathend, "*");
-		}
+		bstrcat(pathend, "*");
 	}
 	
 	if((hfind = FindFirstFileEx(path, FindExInfoBasic, &fd,
@@ -283,8 +243,8 @@ static void finder_find(Finder *f, const char *basedir)
     FindClose(hfind);
 }
 
-void __main(void) asm("__main");
-void __main(void)
+void _main(void) asm("_main");
+void _main(void)
 {
 	Finder f;
 	Console c;
@@ -296,6 +256,7 @@ void __main(void)
 		&stoponfirst, &absolutepath,
 		&searchignorecase, &containsignorecase
 	};
+	
 	console_init(&c);
 	args_make(&search, ArgValue, "-s"); 
 	args_make(&base, ArgValue, "-b");
@@ -304,17 +265,38 @@ void __main(void)
 	args_make(&absolutepath, ArgBool, "-a");
 	args_make(&searchignorecase, ArgBool, "-is");
 	args_make(&containsignorecase, ArgBool, "-ic"); 
-	args_get(args, ARR_LEN(args));
-	if(!base.value) {
-		base.value = ".";
-	}
-	if(!search.value || !finder_init(&f, &c,
-		search.value, contains.value,
-		stoponfirst.isset, absolutepath.isset,
-		searchignorecase.isset, containsignorecase.isset
-	)) {
+	args_get(args, ARR_LEN(args), GetCommandLine());
+	
+	if(!search.value) {
+		console_println(&c, "Usage of pose:\n \
+  -s:  name regex\n \
+  -b:  base directory\n \
+  -c:  contains regex\n \
+  -f:  stop at first occurance\n \
+  -a:  show absolute paths\n \
+  -is: ignore case in name regex\n \
+  -ic: ignore case in contains regex");
 		goto end;
 	}
+	
+	if(!base.value) {
+		char basepath[MAX_PATH] = {0};
+		GetCurrentDirectory(sizeof(basepath), basepath);
+		base.value = basepath;
+	}
+	
+	f.c = &c;
+	f.search = search.value;
+	if(contains.value) {
+		f.contains = contains.value;
+	} else {
+		f.contains = NULL;
+	}
+	f.stoponfirst = stoponfirst.isset;
+	f.absolutepath = absolutepath.isset;
+	f.searchignorecase = searchignorecase.isset;
+	f.containsignorecase = containsignorecase.isset;
+
 	finder_find(&f, base.value);
 end:
 	console_deinit(&c);
