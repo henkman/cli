@@ -27,16 +27,6 @@ typedef struct {
 	HANDLE stdout;
 } Console;
 
-typedef struct {
-	Console *c;
-	char *search;
-	char *contains;
-	int stoponfirst;
-	int absolutepath;
-	int searchignorecase;
-	int containsignorecase;
-} Finder;
-
 static void args_make(Arg *arg, ArgType type, char *key)
 {
 	arg->type = type;
@@ -147,7 +137,6 @@ static void args_get(Arg **args, int count, const char *cmdline)
 	}
 }
 
-
 static void console_init(Console *c)
 {
 	AllocConsole();
@@ -171,29 +160,25 @@ static unsigned long console_write(Console *c, const void *msg, size_t len)
 
 static unsigned long console_put(Console *c, const char b)
 {
-	char msg[1] = {b};	
+	char msg[1] = {b};
 	return console_write(c, msg, sizeof(msg));
 }
 
-static unsigned long console_printu(Console *c, const unsigned u)
+static unsigned long console_printu(Console *c, unsigned v)
 {
-	unsigned v = u;
-	unsigned i;
-	char x;
-	char t[11];
 	char *tp, *rtp;
+	char t[11];
 	size_t n;
+	char x;
 	if(v < 10) {
 		return console_put(c, v+'0');
 	}
-	tp = t;
+	tp = rtp = t;
 	while(v) {
-		i = v % 10;
-		v = v / 10;
-		*tp++ = i+'0';
+		*tp++ = (v%10)+'0';
+		v = v/10;
 	}
 	n = tp-t;
-	rtp = t;
 	tp--;
 	while(tp > rtp) {
 		x = *tp;
@@ -208,22 +193,22 @@ static unsigned long console_printu(Console *c, const unsigned u)
 static unsigned stou(const char *s)
 {
 	char *p = (char *) s;
-	unsigned r = 0; 
-	while(*p) { 
-		if (*p < '0' || *p > '9') { 
+	unsigned r = 0;
+	while(*p) {
+		if(*p < '0' || *p > '9') {
 			return 0;
-		} 
-		r *= 10; 
-		r += *p - '0'; 
+		}
+		r *= 10;
+		r += *p - '0';
 		p++;
-	} 
-	return r; 
+	}
+	return r;
 }
 
 void _main(void) asm("_main");
 void _main(void)
 {
-	HCRYPTPROV hcrypt = NULL;
+	HCRYPTPROV hcrypt;
 	unsigned r;
 	unsigned ret = 0;
 	Console c;
@@ -231,30 +216,30 @@ void _main(void)
 	Arg *args[] = {
 		&coinmode, &start, &end,
 	};
-	
+
 	console_init(&c);
-	args_make(&start, ArgValue, "-s"); 
+	args_make(&start, ArgValue, "-s");
 	args_make(&end, ArgValue, "-e");
 	args_make(&coinmode, ArgBool, "-c");
 	args_get(args, ARR_LEN(args), GetCommandLine());
-	
+
 	if(!coinmode.isset && !(start.value && end.value)) {
-		console_print_const(&c, "Usage of rand:\n \
-  -s:  lower range end\n \
-  -e:  upper range end\n \
+		console_print_const(&c, "Usage of rand:\n\
+  -s:  lower range end\n\
+  -e:  upper range end\n\
   -c:  coin mode, only prints yes or no, and returns 1 or 0\n");
 		goto end;
 	}
 
 	if(!CryptAcquireContext(&hcrypt, "quite random", NULL,
 			PROV_RSA_FULL, 0)
-		&& !CryptAcquireContext(&hcrypt, "quite random", NULL,
+	   && !CryptAcquireContext(&hcrypt, "quite random", NULL,
 			PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
 		console_print_const(&c, "crypt api failed");
 		goto end;
 	}
-	
-	if(coinmode.isset) {		
+
+	if(coinmode.isset) {
 		CryptGenRandom(hcrypt, sizeof(unsigned), (BYTE *)&r);
 		r = r & (1<<15);
 		if(r) {
@@ -271,7 +256,7 @@ void _main(void)
 			r = 0;
 		} else {
 			unsigned max;
-			if (dist <= 0x80000000u) {
+			if(dist <= 0x80000000u) {
 				unsigned left = (0x80000000u % dist) * 2;
 				if(left >= dist) {
 					left -= dist;
@@ -282,9 +267,9 @@ void _main(void)
 			}
 			do {
 				CryptGenRandom(hcrypt, sizeof(unsigned), (BYTE *)&r);
-			} while (r > max);
+			} while(r > max);
 			r %= dist;
-		}	
+		}
 		r = s+r;
 		console_printu(&c, r);
 		console_put(&c, '\n');
