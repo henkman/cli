@@ -177,21 +177,35 @@ static unsigned long console_put(Console *c, const char b)
 
 static unsigned long console_printu(Console *c, const unsigned u)
 {
-	unsigned x = u;
-	unsigned v;
-	unsigned long n = 0;
-	if(x < 10) {
-		return console_put(c, x + '0');
+	unsigned v = u;
+	unsigned i;
+	char x;
+	char t[11];
+	char *tp, *rtp;
+	size_t n;
+	if(v < 10) {
+		return console_put(c, v+'0');
 	}
-	while(x) {
-		v = x % 10;
-		x = x / 10;
-		n += console_put(c, v + '0');
+	tp = t;
+	while(v) {
+		i = v % 10;
+		v = v / 10;
+		*tp++ = i+'0';
 	}
-	return n;
+	n = tp-t;
+	rtp = t;
+	tp--;
+	while(tp > rtp) {
+		x = *tp;
+		*tp = *rtp;
+		*rtp = x;
+		tp--;
+		rtp++;
+	}
+	return console_write(c, t, n);
 }
 
-static unsigned atou(const char *s)
+static unsigned stou(const char *s)
 {
 	char *p = (char *) s;
 	unsigned r = 0; 
@@ -250,30 +264,28 @@ void _main(void)
 		}
 		ret = r;
 	} else {
-		unsigned s = atou(start.value);
-		unsigned e = atou(end.value);
-		if(!(r >= s && r <= e)) {
-			unsigned dist = e-s;
-			if(dist == 0) {
-				r = 0;
-			} else {
-				unsigned max;
-				if (dist <= 0x80000000u) {
-					unsigned left = (0x80000000u % dist) * 2;
-					if(left >= dist) {
-						left -= dist;
-					}
-					max = 0xffffffffu - left;
-				} else {
-					max = dist - 1;
+		unsigned s = stou(start.value);
+		unsigned e = stou(end.value);
+		unsigned dist = e-s;
+		if(dist == 0) {
+			r = 0;
+		} else {
+			unsigned max;
+			if (dist <= 0x80000000u) {
+				unsigned left = (0x80000000u % dist) * 2;
+				if(left >= dist) {
+					left -= dist;
 				}
-				do {
-					CryptGenRandom(hcrypt, sizeof(unsigned), (BYTE *)&r);
-				} while (r > max);
-				r %= dist;
-			}	
-			r = s+r;
-		}
+				max = 0xffffffffu - left;
+			} else {
+				max = dist - 1;
+			}
+			do {
+				CryptGenRandom(hcrypt, sizeof(unsigned), (BYTE *)&r);
+			} while (r > max);
+			r %= dist;
+		}	
+		r = s+r;
 		console_printu(&c, r);
 		console_put(&c, '\n');
 		ret = r;
