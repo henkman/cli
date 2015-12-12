@@ -31,7 +31,9 @@ func main() {
 		return
 	}
 	if _ignorecase {
-		_regex = "(?i)" + _regex
+		_regex = "(?mi)" + _regex
+	} else {
+		_regex = "(?m)" + _regex
 	}
 	re, err := regexp.Compile(_regex)
 	if err != nil {
