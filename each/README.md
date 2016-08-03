@@ -1,4 +1,4 @@
-# contains
+# each
 utility to execute a command for each line coming from stdin
 
 ```

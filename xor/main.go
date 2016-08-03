@@ -8,25 +8,8 @@ import (
 	"os"
 )
 
-func keyget(key io.ReadSeeker, buf []byte, toread int) error {
-	o := 0
-	for o != toread {
-		n, err := key.Read(buf[o:toread])
-		o += n
-		if err != nil {
-			if err == io.EOF {
-				key.Seek(0, 0)
-				continue
-			}
-			return err
-		}
-	}
-	return nil
-}
-
 func xor(data io.Reader, key io.ReadSeeker, out io.Writer) error {
-	dbuf := make([]byte, 32*1024)
-	kbuf := make([]byte, len(dbuf))
+	const BUF_SIZE = 32 * 1024
 
 	// short path for key files
 	// smaller than buffer
@@ -35,7 +18,7 @@ func xor(data io.Reader, key io.ReadSeeker, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if fi.Size() < int64(len(dbuf)) {
+		if fi.Size() < BUF_SIZE {
 			skbuf := make([]byte, fi.Size())
 			_, err := key.Read(skbuf)
 			if err != nil {
@@ -45,12 +28,23 @@ func xor(data io.Reader, key io.ReadSeeker, out io.Writer) error {
 		}
 	}
 
+	var dbuf, kbuf [BUF_SIZE]byte
 	for {
-		n, err := data.Read(dbuf)
+		n, err := data.Read(dbuf[:])
 		if n > 0 {
-			err = keyget(key, kbuf, n)
-			if err != nil {
-				return err
+			{
+				o := 0
+				for o != n {
+					kn, err := key.Read(kbuf[o:n])
+					o += kn
+					if err != nil {
+						if err == io.EOF {
+							key.Seek(0, 0)
+							continue
+						}
+						return err
+					}
+				}
 			}
 			for i := 0; i < n; i++ {
 				dbuf[i] ^= kbuf[i]
