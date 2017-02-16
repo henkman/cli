@@ -67,7 +67,9 @@ func list(dir string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fd.Readdir(-1)
+	fis, err := fd.Readdir(-1)
+	fd.Close()
+	return fis, err
 }
 
 func optimize(dir string, quiet bool, tasks chan Task) error {
