@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 )
 
@@ -17,19 +18,21 @@ var (
 var (
 	_ytdl  string
 	_in    string
+	_ad    string
 	_procs int
 )
 
 func init() {
 	flag.StringVar(&_ytdl, "y", "youtube-dl", "youtube-dl binary")
 	flag.StringVar(&_in, "i", "", "file with urls")
+	flag.StringVar(&_ad, "a", "", "additional parameters")
 	flag.IntVar(&_procs, "p", 8, "number of processes")
 	flag.Parse()
 }
 
-func worker(urls chan string, wg *sync.WaitGroup) {
+func worker(urls chan string, ad []string, wg *sync.WaitGroup) {
 	for url := range urls {
-		cmd := exec.Command(_ytdl, url)
+		cmd := exec.Command(_ytdl, append(ad, url)...)
 		cmd.Run()
 	}
 	wg.Done()
@@ -51,11 +54,12 @@ func main() {
 		fmt.Println("no urls found")
 		return
 	}
+	ad := strings.Split(_ad, " ")
 	var wg sync.WaitGroup
 	wg.Add(_procs)
 	urls := make(chan string)
 	for i := 0; i < _procs; i++ {
-		go worker(urls, &wg)
+		go worker(urls, ad, &wg)
 	}
 	for _, url := range m {
 		urls <- url
