@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"path/filepath"
 
 	"github.com/kardianos/osext"
+	"github.com/valyala/fasthttp"
 )
 
 var (
@@ -23,13 +23,20 @@ func init() {
 
 func main() {
 	addr := fmt.Sprintf("0.0.0.0:%d", _port)
-	fs := http.FileServer(http.Dir("./"))
+	fs := &fasthttp.FS{
+		Root:               "./",
+		GenerateIndexPages: true,
+		Compress:           true,
+		AcceptByteRange:    true,
+	}
+	h := fs.NewRequestHandler()
 	if !_https {
-		log.Fatal(http.ListenAndServe(addr, fs))
+		log.Fatal(fasthttp.ListenAndServe(addr, h))
 	} else {
 		exe, _ := osext.Executable()
 		d := filepath.Dir(exe)
-		log.Fatal(http.ListenAndServeTLS(addr, filepath.Join(d, "cert.pem"), filepath.Join(d, "key.pem"), fs))
+		log.Fatal(fasthttp.ListenAndServeTLS(addr,
+			filepath.Join(d, "cert.pem"),
+			filepath.Join(d, "key.pem"), h))
 	}
-
 }
