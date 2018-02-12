@@ -15,8 +15,8 @@ func main() {
 		Out    string
 	}
 	flag.BoolVar(&opts.Decode, "d", false, "decode mode. omit if you want to encode")
-	flag.StringVar(&opts.In, "in", "", "input file. leave empty for stdin")
-	flag.StringVar(&opts.Out, "out", "", "output file. leave empty for stdout")
+	flag.StringVar(&opts.In, "i", "", "input file. leave empty for stdin")
+	flag.StringVar(&opts.Out, "o", "", "output file. leave empty for stdout")
 	flag.Parse()
 
 	var src io.Reader
