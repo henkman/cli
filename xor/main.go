@@ -64,34 +64,31 @@ func xor(data io.Reader, key io.ReadSeeker, out io.Writer) error {
 	return nil
 }
 
-var (
-	_datafile string
-	_data     string
-	_keyfile  string
-	_key      string
-	_outfile  string
-)
-
-func init() {
-	flag.StringVar(&_datafile, "df", "", "datafile")
-	flag.StringVar(&_data, "d", "", "data")
-	flag.StringVar(&_keyfile, "kf", "", "keyfile")
-	flag.StringVar(&_key, "k", "", "key")
-	flag.StringVar(&_outfile, "of", "", "outfile")
-	flag.Parse()
-}
-
 func main() {
-	if _keyfile == "" && _key == "" {
+	var opts struct {
+		Datafile string
+		Data     string
+		Keyfile  string
+		Key      string
+		Outfile  string
+	}
+	flag.StringVar(&opts.Datafile, "df", "", "datafile")
+	flag.StringVar(&opts.Data, "d", "", "data")
+	flag.StringVar(&opts.Keyfile, "kf", "", "keyfile")
+	flag.StringVar(&opts.Key, "k", "", "key")
+	flag.StringVar(&opts.Outfile, "of", "", "outfile")
+	flag.Parse()
+
+	if opts.Keyfile == "" && opts.Key == "" {
 		flag.Usage()
 		return
 	}
 
 	var data io.Reader
-	if _data != "" {
-		data = bytes.NewBufferString(_data)
-	} else if _datafile != "" {
-		fd, err := os.Open(_datafile)
+	if opts.Data != "" {
+		data = bytes.NewBufferString(opts.Data)
+	} else if opts.Datafile != "" {
+		fd, err := os.Open(opts.Datafile)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -103,10 +100,10 @@ func main() {
 	}
 
 	var key io.ReadSeeker
-	if _key != "" {
-		key = bytes.NewReader([]byte(_key))
+	if opts.Key != "" {
+		key = bytes.NewReader([]byte(opts.Key))
 	} else {
-		fd, err := os.Open(_keyfile)
+		fd, err := os.Open(opts.Keyfile)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -116,8 +113,8 @@ func main() {
 	}
 
 	var out io.Writer
-	if _outfile != "" {
-		fd, err := os.OpenFile(_outfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
+	if opts.Outfile != "" {
+		fd, err := os.OpenFile(opts.Outfile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 			0600)
 		if err != nil {
 			fmt.Println(err)

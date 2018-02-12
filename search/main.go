@@ -14,58 +14,55 @@ import (
 	"regexp"
 )
 
-var (
-	_base               string
-	_search             string
-	_contains           string
-	_stoponfirst        bool
-	_absolutepath       bool
-	_searchignorecase   bool
-	_containsignorecase bool
-)
-
-func init() {
-	flag.StringVar(&_search, "s", "", "regex of file(s) to search for")
-	flag.StringVar(&_contains, "c", "", "regex of thing(s) that should be in file(s)")
-	flag.StringVar(&_base, "b", ".", "the base directory")
-	flag.BoolVar(&_stoponfirst, "f", false, "stop on the first occurance")
-	flag.BoolVar(&_absolutepath, "a", false, "only show absolute paths")
-	flag.BoolVar(&_searchignorecase, "is", false, "ignore case in file regex")
-	flag.BoolVar(&_containsignorecase, "ic", false, "ignore case in contains regex")
-	flag.Parse()
-}
-
 func main() {
-	if _search == "" {
+	var opts struct {
+		Base               string
+		Search             string
+		Contains           string
+		Stoponfirst        bool
+		Absolutepath       bool
+		Searchignorecase   bool
+		Containsignorecase bool
+	}
+	flag.StringVar(&opts.Search, "s", "", "regex of file(s) to search for")
+	flag.StringVar(&opts.Contains, "c", "", "regex of thing(s) that should be in file(s)")
+	flag.StringVar(&opts.Base, "b", ".", "the base directory")
+	flag.BoolVar(&opts.Stoponfirst, "f", false, "stop on the first occurance")
+	flag.BoolVar(&opts.Absolutepath, "a", false, "only show absolute paths")
+	flag.BoolVar(&opts.Searchignorecase, "is", false, "ignore case in file regex")
+	flag.BoolVar(&opts.Containsignorecase, "ic", false, "ignore case in contains regex")
+	flag.Parse()
+
+	if opts.Search == "" {
 		flag.Usage()
 		return
 	}
 
-	if _searchignorecase {
-		_search = "(?i)" + _search
+	if opts.Searchignorecase {
+		opts.Search = "(?i)" + opts.Search
 	}
 
-	fr, err := regexp.Compile(_search)
+	fr, err := regexp.Compile(opts.Search)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	var cr *regexp.Regexp
-	if _contains != "" {
-		if _containsignorecase {
-			_contains = "(?i)" + _contains
+	if opts.Contains != "" {
+		if opts.Containsignorecase {
+			opts.Contains = "(?i)" + opts.Contains
 		}
 
-		cr, err = regexp.Compile(_contains)
+		cr, err = regexp.Compile(opts.Contains)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 	}
 
-	if _base == "." {
-		_base, err = os.Getwd()
+	if opts.Base == "." {
+		opts.Base, err = os.Getwd()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -91,17 +88,17 @@ func main() {
 				return nil
 			}
 		}
-		if _absolutepath {
+		if opts.Absolutepath {
 			fmt.Println(path)
 		} else {
-			rp, _ := filepath.Rel(_base, path)
+			rp, _ := filepath.Rel(opts.Base, path)
 			fmt.Println(rp)
 		}
-		if _stoponfirst {
+		if opts.Stoponfirst {
 			return errors.New("")
 		}
 		return nil
 	}
 
-	filepath.Walk(_base, searchVisit)
+	filepath.Walk(opts.Base, searchVisit)
 }

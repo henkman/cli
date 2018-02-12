@@ -6,45 +6,38 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 )
 
-var (
-	reUrl = regexp.MustCompile("(?m)^https?://\\S+$")
-)
+var reUrl = regexp.MustCompile("(?m)^https?://\\S+$")
 
-var (
-	_ytdl  string
-	_in    string
-	_ad    string
-	_procs int
-)
-
-func init() {
-	flag.StringVar(&_ytdl, "y", "youtube-dl", "youtube-dl binary")
-	flag.StringVar(&_in, "i", "", "file with urls")
-	flag.StringVar(&_ad, "a", "", "additional parameters")
-	flag.IntVar(&_procs, "p", 8, "number of processes")
-	flag.Parse()
-}
-
-func worker(urls chan string, ad []string, wg *sync.WaitGroup) {
+func worker(urls chan string, ytdl string, ad []string, wg *sync.WaitGroup) {
 	for url := range urls {
-		cmd := exec.Command(_ytdl, append(ad, url)...)
+		cmd := exec.Command(ytdl, append(ad, url)...)
 		cmd.Run()
 	}
 	wg.Done()
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	if _in == "" {
+	var opts struct {
+		Ytdl  string
+		In    string
+		Ad    string
+		Procs int
+	}
+	flag.StringVar(&opts.Ytdl, "y", "youtube-dl", "youtube-dl binary")
+	flag.StringVar(&opts.In, "i", "", "file with urls")
+	flag.StringVar(&opts.Ad, "a", "", "additional parameters")
+	flag.IntVar(&opts.Procs, "p", 8, "number of processes")
+	flag.Parse()
+
+	if opts.In == "" {
 		flag.Usage()
 		return
 	}
-	data, err := ioutil.ReadFile(_in)
+	data, err := ioutil.ReadFile(opts.In)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -54,12 +47,12 @@ func main() {
 		fmt.Println("no urls found")
 		return
 	}
-	ad := strings.Split(_ad, " ")
+	ad := strings.Split(opts.Ad, " ")
 	var wg sync.WaitGroup
-	wg.Add(_procs)
+	wg.Add(opts.Procs)
 	urls := make(chan string)
-	for i := 0; i < _procs; i++ {
-		go worker(urls, ad, &wg)
+	for i := 0; i < opts.Procs; i++ {
+		go worker(urls, opts.Ytdl, ad, &wg)
 	}
 	for _, url := range m {
 		urls <- url

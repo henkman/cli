@@ -7,19 +7,6 @@ import (
 	"regexp"
 )
 
-var (
-	_regex string
-	_repl  string
-	_test  bool
-)
-
-func init() {
-	flag.StringVar(&_regex, "r", "", "regex")
-	flag.StringVar(&_repl, "p", "", "replacement")
-	flag.BoolVar(&_test, "t", false, "do not move for realz, only print")
-	flag.Parse()
-}
-
 func lsdir(dir string) ([]os.FileInfo, error) {
 	fd, err := os.Open(".")
 	if err != nil {
@@ -53,11 +40,21 @@ func remrep(regex, repl, dir string, test bool) error {
 }
 
 func main() {
-	if _regex == "" || _repl == "" {
+	var opts struct {
+		Regex string
+		Repl  string
+		Test  bool
+	}
+	flag.StringVar(&opts.Regex, "r", "", "regex")
+	flag.StringVar(&opts.Repl, "p", "", "replacement")
+	flag.BoolVar(&opts.Test, "t", false, "do not move for realz, only print")
+	flag.Parse()
+
+	if opts.Regex == "" || opts.Repl == "" {
 		flag.Usage()
 		return
 	}
-	err := remrep(_regex, _repl, ".", _test)
+	err := remrep(opts.Regex, opts.Repl, ".", opts.Test)
 	if err != nil {
 		fmt.Println(err)
 	}

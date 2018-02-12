@@ -45,25 +45,8 @@ import (
 */
 import "C"
 
-var (
-	reValidFiles = regexp.MustCompile(
-		"^.*\\.(?:wav|mp4|m4a|wmv|flv|webm|mkv|avi)$")
-
-	_mpv      string
-	_dir      string
-	_start    uint
-	_number   uint
-	_vertical bool
-)
-
-func init() {
-	flag.StringVar(&_mpv, "p", "mpv", "mpv executable")
-	flag.StringVar(&_dir, "d", "", "dir")
-	flag.UintVar(&_number, "n", 2, "number")
-	flag.UintVar(&_start, "s", 0, "start")
-	flag.BoolVar(&_vertical, "v", false, "vertical instead of horizontal")
-	flag.Parse()
-}
+var reValidFiles = regexp.MustCompile(
+	"^.*\\.(?:wav|mp4|m4a|wmv|flv|webm|mkv|avi)$")
 
 func DesktopSize() (int, int) {
 	return int(C.GetSystemMetrics(C.SM_CXSCREEN)),
@@ -149,7 +132,21 @@ func TileNaive(tw, th, n int, vertical bool) (int, int, int, int) {
 }
 
 func main() {
-	if _dir == "" {
+	var opts struct {
+		Mpv      string
+		Dir      string
+		Start    uint
+		Number   uint
+		Vertical bool
+	}
+	flag.StringVar(&opts.Mpv, "p", "mpv", "mpv executable")
+	flag.StringVar(&opts.Dir, "d", "", "dir")
+	flag.UintVar(&opts.Number, "n", 2, "number")
+	flag.UintVar(&opts.Start, "s", 0, "start")
+	flag.BoolVar(&opts.Vertical, "v", false, "vertical instead of horizontal")
+	flag.Parse()
+
+	if opts.Dir == "" {
 		flag.Usage()
 		return
 	}
@@ -157,14 +154,14 @@ func main() {
 	var w, h, rows, cols int
 	{
 		dw, dh := DesktopSize()
-		w, h, rows, cols = TileNaive(dw, dh, int(_number), _vertical)
+		w, h, rows, cols = TileNaive(dw, dh, int(opts.Number), opts.Vertical)
 	}
 
 	rand.Seed(time.Now().UnixNano())
 
-	files := make([]os.FileInfo, 0, _number)
+	files := make([]os.FileInfo, 0, opts.Number)
 	{
-		fd, err := os.Open(_dir)
+		fd, err := os.Open(opts.Dir)
 		if err != nil {
 			panic(err)
 		}
@@ -183,8 +180,8 @@ func main() {
 			o := p[i]
 			files[i], files[o] = files[o], files[i]
 		}
-		if uint(len(files)) > _number {
-			files = files[:_number]
+		if uint(len(files)) > opts.Number {
+			files = files[:opts.Number]
 		}
 	}
 	cmds := make([]*exec.Cmd, len(files))
@@ -195,15 +192,15 @@ func main() {
 				f := files[o]
 				wx := x * w
 				wy := y * h
-				cmds[o] = exec.Command(_mpv,
-					filepath.Join(_dir, f.Name()),
+				cmds[o] = exec.Command(opts.Mpv,
+					filepath.Join(opts.Dir, f.Name()),
 					fmt.Sprintf("--geometry=%dx%d+%d+%d", w, h, wx, wy),
 					"--no-border",
 					"--idle=yes",
 				)
-				if _start > 0 {
+				if opts.Start > 0 {
 					cmds[o].Args = append(cmds[o].Args,
-						fmt.Sprintf("--start=%d%%", _start))
+						fmt.Sprintf("--start=%d%%", opts.Start))
 				}
 				cmds[o].Start()
 			}

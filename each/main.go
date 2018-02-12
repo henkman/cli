@@ -12,29 +12,25 @@ import (
 	"strings"
 )
 
-var (
-	_do        string
-	_re        string
-	_test      bool
-	_errignore bool
-)
-
-func init() {
-	flag.StringVar(&_do, "do", "", "command for each element, $0 is complete match, $1..$n are groups")
-	flag.StringVar(&_re, "re", "", "regex to use for partitioning, if empty whole string is used")
-	flag.BoolVar(&_errignore, "e", false, "ignore errors")
-	flag.BoolVar(&_test, "t", false, "don't do, just print")
-	flag.Parse()
-}
-
 func main() {
-	if _do == "" {
+	var opts struct {
+		Do        string
+		Re        string
+		Test      bool
+		Errignore bool
+	}
+	flag.StringVar(&opts.Do, "do", "", "command for each element, $0 is complete match, $1..$n are groups")
+	flag.StringVar(&opts.Re, "re", "", "regex to use for partitioning, if empty whole string is used")
+	flag.BoolVar(&opts.Errignore, "e", false, "ignore errors")
+	flag.BoolVar(&opts.Test, "t", false, "don't do, just print")
+	flag.Parse()
+	if opts.Do == "" {
 		flag.Usage()
 		return
 	}
 	var reMatch *regexp.Regexp
-	if _re != "" {
-		treMatch, err := regexp.Compile(_re)
+	if opts.Re != "" {
+		treMatch, err := regexp.Compile(opts.Re)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -63,11 +59,11 @@ func main() {
 				continue
 			}
 			dst = dst[:0]
-			do = string(reMatch.ExpandString(dst, _do, line, m))
+			do = string(reMatch.ExpandString(dst, opts.Do, line, m))
 		} else {
-			do = strings.Replace(_do, "$0", line, -1)
+			do = strings.Replace(opts.Do, "$0", line, -1)
 		}
-		if _test {
+		if opts.Test {
 			fmt.Println(do)
 			continue
 		}
@@ -80,7 +76,7 @@ func main() {
 		cmd := exec.Command(prog, args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); !_errignore && err != nil {
+		if err := cmd.Run(); !opts.Errignore && err != nil {
 			log.Fatal(err)
 		}
 	}

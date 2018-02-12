@@ -8,39 +8,36 @@ import (
 	"regexp"
 )
 
-var (
-	_file        string
-	_regex       string
-	_print       string
-	_ignorecase  bool
-	_stoponfirst bool
-)
-
-func init() {
-	flag.StringVar(&_file, "f", "", "file to search in")
-	flag.StringVar(&_regex, "r", "", "search regex")
-	flag.StringVar(&_print, "p", "", "instead of whole match print this (can contain $0..$N to refer to groups)")
-	flag.BoolVar(&_ignorecase, "c", false, "ignore case (prepends (?i) to regex)")
-	flag.BoolVar(&_stoponfirst, "s", false, "stop when first match is found")
-	flag.Parse()
-}
-
 func main() {
-	if _file == "" || _regex == "" {
+	var opts struct {
+		File        string
+		Regex       string
+		Print       string
+		Ignorecase  bool
+		Stoponfirst bool
+	}
+	flag.StringVar(&opts.File, "f", "", "file to search in")
+	flag.StringVar(&opts.Regex, "r", "", "search regex")
+	flag.StringVar(&opts.Print, "p", "", "instead of whole match print this (can contain $0..$N to refer to groups)")
+	flag.BoolVar(&opts.Ignorecase, "c", false, "ignore case (prepends (?i) to regex)")
+	flag.BoolVar(&opts.Stoponfirst, "s", false, "stop when first match is found")
+	flag.Parse()
+
+	if opts.File == "" || opts.Regex == "" {
 		flag.Usage()
 		return
 	}
-	if _ignorecase {
-		_regex = "(?mi)" + _regex
+	if opts.Ignorecase {
+		opts.Regex = "(?mi)" + opts.Regex
 	} else {
-		_regex = "(?m)" + _regex
+		opts.Regex = "(?m)" + opts.Regex
 	}
-	re, err := regexp.Compile(_regex)
+	re, err := regexp.Compile(opts.Regex)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fd, err := os.OpenFile(_file, os.O_RDONLY, 0600)
+	fd, err := os.OpenFile(opts.File, os.O_RDONLY, 0600)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -52,7 +49,7 @@ func main() {
 		return
 	}
 	var dst []byte
-	if _print != "" {
+	if opts.Print != "" {
 		dst = make([]byte, 0, 1*1024)
 	}
 	for {
@@ -60,13 +57,13 @@ func main() {
 		if m == nil {
 			break
 		}
-		if _print != "" {
+		if opts.Print != "" {
 			dst = dst[:0]
-			fmt.Println(string(re.ExpandString(dst, _print, string(c), m)))
+			fmt.Println(string(re.ExpandString(dst, opts.Print, string(c), m)))
 		} else {
 			fmt.Println(string(c[m[0]:m[1]]))
 		}
-		if _stoponfirst {
+		if opts.Stoponfirst {
 			break
 		}
 		c = c[m[1]:]

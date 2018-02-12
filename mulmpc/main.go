@@ -49,25 +49,8 @@ import (
 */
 import "C"
 
-var (
-	reValidFiles = regexp.MustCompile(
-		"^.*\\.(?:wav|mp4|m4a|wmv|flv|webm|mkv|avi)$")
-
-	_mpc_hc   string
-	_dir      string
-	_number   uint
-	_vertical bool
-)
-
-func init() {
-	flag.StringVar(&_mpc_hc, "p",
-		"C:\\Program Files (x86)\\MPC-HC\\mpc-hc.exe",
-		"mpc-hc executable")
-	flag.StringVar(&_dir, "d", "", "dir")
-	flag.UintVar(&_number, "n", 2, "number")
-	flag.BoolVar(&_vertical, "v", false, "vertical instead of horizontal")
-	flag.Parse()
-}
+var reValidFiles = regexp.MustCompile(
+	"^.*\\.(?:wav|mp4|m4a|wmv|flv|webm|mkv|avi)$")
 
 func DesktopSize() (int, int) {
 	return int(C.GetSystemMetrics(C.SM_CXSCREEN)),
@@ -153,7 +136,21 @@ func TileNaive(tw, th, n int, vertical bool) (int, int, int, int) {
 }
 
 func main() {
-	if _dir == "" {
+	var opts struct {
+		Mpc_hc   string
+		Dir      string
+		Number   uint
+		Vertical bool
+	}
+	flag.StringVar(&opts.Mpc_hc, "p",
+		"C:\\Program Files (x86)\\MPC-HC\\mpc-hc.exe",
+		"mpc-hc executable")
+	flag.StringVar(&opts.Dir, "d", "", "dir")
+	flag.UintVar(&opts.Number, "n", 2, "number")
+	flag.BoolVar(&opts.Vertical, "v", false, "vertical instead of horizontal")
+	flag.Parse()
+
+	if opts.Dir == "" {
 		flag.Usage()
 		return
 	}
@@ -164,7 +161,7 @@ func main() {
 	var w, h, rows, cols int
 	{
 		dw, dh := DesktopSize()
-		w, h, rows, cols = TileNaive(dw, dh, int(_number), _vertical)
+		w, h, rows, cols = TileNaive(dw, dh, int(opts.Number), opts.Vertical)
 	}
 
 	var wscript *ole.IDispatch
@@ -177,9 +174,9 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
-	files := make([]os.FileInfo, 0, _number)
+	files := make([]os.FileInfo, 0, opts.Number)
 	{
-		fd, err := os.Open(_dir)
+		fd, err := os.Open(opts.Dir)
 		if err != nil {
 			panic(err)
 		}
@@ -198,14 +195,14 @@ func main() {
 			o := p[i]
 			files[i], files[o] = files[o], files[i]
 		}
-		if uint(len(files)) > _number {
-			files = files[:_number]
+		if uint(len(files)) > opts.Number {
+			files = files[:opts.Number]
 		}
 	}
 	cmds := make([]*exec.Cmd, len(files))
 	{
 		for i, file := range files {
-			cmds[i] = exec.Command(_mpc_hc, filepath.Join(_dir, file.Name()))
+			cmds[i] = exec.Command(opts.Mpc_hc, filepath.Join(opts.Dir, file.Name()))
 			cmds[i].Start()
 		}
 		tper := time.Duration(750)

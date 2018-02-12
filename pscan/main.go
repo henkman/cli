@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -182,22 +181,6 @@ func IPsInRange(s, e net.IP) int {
 	return r + 1
 }
 
-var (
-	_ports   string
-	_hosts   string
-	_workers uint
-	_timeout uint
-)
-
-func init() {
-	flag.StringVar(&_ports, "p", "", "Port(s) comma separated or range with port-port")
-	flag.StringVar(&_hosts, "h", "",
-		"Host(s), either comma separated, a masked net or range with ip-ip")
-	flag.UintVar(&_workers, "w", 200, "Number of workers, default is 200")
-	flag.UintVar(&_timeout, "t", 2, "Timeout in seconds, default is 2")
-	flag.Parse()
-}
-
 func parseTarget(sports, shosts string) Target {
 	var ports []uint16
 	if strings.Contains(sports, "-") {
@@ -268,13 +251,25 @@ func parseTarget(sports, shosts string) Target {
 }
 
 func main() {
-	if _hosts == "" || _ports == "" {
+	var opts struct {
+		Ports   string
+		Hosts   string
+		Workers uint
+		Timeout uint
+	}
+	flag.StringVar(&opts.Ports, "p", "", "Port(s) comma separated or range with port-port")
+	flag.StringVar(&opts.Hosts, "h", "",
+		"Host(s), either comma separated, a masked net or range with ip-ip")
+	flag.UintVar(&opts.Workers, "w", 200, "Number of workers, default is 200")
+	flag.UintVar(&opts.Timeout, "t", 2, "Timeout in seconds, default is 2")
+	flag.Parse()
+
+	if opts.Hosts == "" || opts.Ports == "" {
 		flag.Usage()
 		return
 	}
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	target := parseTarget(_ports, _hosts)
-	s := NewScan(target, _workers, time.Second*time.Duration(_timeout))
+	target := parseTarget(opts.Ports, opts.Hosts)
+	s := NewScan(target, opts.Workers, time.Second*time.Duration(opts.Timeout))
 	s.Run()
 }

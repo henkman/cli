@@ -24,42 +24,25 @@ type Task struct {
 	File      string
 }
 
-var (
-	_dir     string
-	_quiet   bool
-	_help    bool
-	_workers uint
-	opts     = []Optimizer{
-		{
-			CanOptimize:    regexp.MustCompile("(?i)\\.jpe?g$"),
-			OptimizeParams: []string{"-quiet", "-s", "-m", "80", ""},
-			FileIndex:      4,
-			Flag:           "jpegoptim",
-		},
-		{
-			CanOptimize:    regexp.MustCompile("(?i)\\.(?:png|bmp|gif|pnm|tiff)$"),
-			OptimizeParams: []string{"-q", "-o4", "-fix", ""},
-			FileIndex:      3,
-			Flag:           "optipng",
-		},
-		{
-			CanOptimize:    regexp.MustCompile("(?i)\\.svg$"),
-			OptimizeParams: []string{"-q", ""},
-			FileIndex:      1,
-			Flag:           "svgo",
-		},
-	}
-)
-
-func init() {
-	flag.StringVar(&_dir, "d", ".", "directory")
-	flag.BoolVar(&_quiet, "q", false, "quiet")
-	flag.UintVar(&_workers, "w", uint(runtime.NumCPU()), "number of workers")
-	flag.BoolVar(&_help, "h", false, "help")
-	for i, opt := range opts {
-		flag.StringVar(&opts[i].Executable, opt.Flag, opt.Flag, opt.Flag)
-	}
-	flag.Parse()
+var optimizers = []Optimizer{
+	{
+		CanOptimize:    regexp.MustCompile("(?i)\\.jpe?g$"),
+		OptimizeParams: []string{"-quiet", "-s", "-m", "80", ""},
+		FileIndex:      4,
+		Flag:           "jpegoptim",
+	},
+	{
+		CanOptimize:    regexp.MustCompile("(?i)\\.(?:png|bmp|gif|pnm|tiff)$"),
+		OptimizeParams: []string{"-q", "-o4", "-fix", ""},
+		FileIndex:      3,
+		Flag:           "optipng",
+	},
+	{
+		CanOptimize:    regexp.MustCompile("(?i)\\.svg$"),
+		OptimizeParams: []string{"-q", ""},
+		FileIndex:      1,
+		Flag:           "svgo",
+	},
 }
 
 func list(dir string) ([]os.FileInfo, error) {
@@ -82,10 +65,10 @@ func optimize(dir string, quiet bool, tasks chan Task) error {
 			optimize(filepath.Join(dir, fi.Name()), quiet, tasks)
 			continue
 		}
-		for i, opt := range opts {
+		for i, opt := range optimizers {
 			if opt.CanOptimize.FindString(fi.Name()) != "" {
 				file := filepath.Join(dir, fi.Name())
-				tasks <- Task{&opts[i], file}
+				tasks <- Task{&optimizers[i], file}
 				if !quiet {
 					fmt.Println("optimizing", file)
 				}
@@ -97,15 +80,29 @@ func optimize(dir string, quiet bool, tasks chan Task) error {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	if _help {
+	var opts struct {
+		Dir     string
+		Quiet   bool
+		Help    bool
+		Workers uint
+	}
+	flag.StringVar(&opts.Dir, "d", ".", "directory")
+	flag.BoolVar(&opts.Quiet, "q", false, "quiet")
+	flag.UintVar(&opts.Workers, "w", uint(runtime.NumCPU()), "number of workers")
+	flag.BoolVar(&opts.Help, "h", false, "help")
+	for i, opt := range optimizers {
+		flag.StringVar(&optimizers[i].Executable, opt.Flag, opt.Flag, opt.Flag)
+	}
+	flag.Parse()
+
+	if opts.Help {
 		flag.Usage()
 		return
 	}
 	var wg sync.WaitGroup
 	tasks := make(chan Task)
-	wg.Add(int(_workers))
-	for i := uint(0); i < _workers; i++ {
+	wg.Add(int(opts.Workers))
+	for i := uint(0); i < opts.Workers; i++ {
 		go func() {
 			params := []string{}
 			for task := range tasks {
@@ -118,7 +115,7 @@ func main() {
 			wg.Done()
 		}()
 	}
-	if err := optimize(_dir, _quiet, tasks); err != nil {
+	if err := optimize(opts.Dir, opts.Quiet, tasks); err != nil {
 		panic(err)
 	}
 	close(tasks)
