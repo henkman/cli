@@ -11,20 +11,24 @@ import (
 )
 
 var (
+	_host  string
 	_port  uint
+	_dir   string
 	_https bool
 )
 
 func init() {
+	flag.StringVar(&_host, "h", "0.0.0.0", "host")
 	flag.UintVar(&_port, "p", 8080, "port")
+	flag.StringVar(&_dir, "d", "./", "directory to server")
 	flag.BoolVar(&_https, "s", false, "https")
 	flag.Parse()
 }
 
 func main() {
-	addr := fmt.Sprintf("0.0.0.0:%d", _port)
+	addr := fmt.Sprintf("%s:%d", _host, _port)
 	fs := &fasthttp.FS{
-		Root:               "./",
+		Root:               _dir,
 		GenerateIndexPages: true,
 		Compress:           true,
 		AcceptByteRange:    true,
