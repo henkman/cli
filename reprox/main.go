@@ -51,6 +51,7 @@ func main() {
 		query := remote.RawQuery
 		req.URL.Scheme = remote.Scheme
 		req.URL.Host = remote.Host
+		req.Host = remote.Host
 		req.URL.Path = singleJoiningSlash(remote.Path, req.URL.Path)
 		if query == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = query + req.URL.RawQuery
