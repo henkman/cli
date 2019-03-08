@@ -4,10 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/valyala/fasthttp"
 )
 
 func main() {
@@ -22,22 +21,14 @@ func main() {
 	flag.StringVar(&opts.Dir, "d", "./", "directory to server")
 	flag.BoolVar(&opts.Https, "s", false, "https")
 	flag.Parse()
-
 	addr := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
-	fs := &fasthttp.FS{
-		Root:               opts.Dir,
-		GenerateIndexPages: true,
-		Compress:           true,
-		AcceptByteRange:    true,
-	}
-	h := fs.NewRequestHandler()
 	if !opts.Https {
-		log.Fatal(fasthttp.ListenAndServe(addr, h))
+		log.Fatal(http.ListenAndServe(addr, http.FileServer(http.Dir(opts.Dir))))
 	} else {
 		exe, _ := os.Executable()
 		d := filepath.Dir(exe)
-		log.Fatal(fasthttp.ListenAndServeTLS(addr,
+		log.Fatal(http.ListenAndServeTLS(addr,
 			filepath.Join(d, "cert.pem"),
-			filepath.Join(d, "key.pem"), h))
+			filepath.Join(d, "key.pem"), http.FileServer(http.Dir(opts.Dir))))
 	}
 }
