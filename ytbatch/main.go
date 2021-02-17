@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -37,7 +37,7 @@ func main() {
 		flag.Usage()
 		return
 	}
-	data, err := ioutil.ReadFile(opts.In)
+	data, err := os.ReadFile(opts.In)
 	if err != nil {
 		fmt.Println(err)
 		return

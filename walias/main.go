@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -36,7 +35,7 @@ func main() {
 			return
 		}
 	}
-	if err := ioutil.WriteFile(abs, []byte(fmt.Sprintf("@%s %%*", opts.Command)), 0660); err != nil {
+	if err := os.WriteFile(abs, []byte(fmt.Sprintf("@%s %%*", opts.Command)), 0660); err != nil {
 		fmt.Println(err)
 	}
 }

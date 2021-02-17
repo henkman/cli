@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 )
@@ -43,7 +43,7 @@ func main() {
 		return
 	}
 	defer fd.Close()
-	c, err := ioutil.ReadAll(fd)
+	c, err := io.ReadAll(fd)
 	if err != nil {
 		fmt.Println(err)
 		return

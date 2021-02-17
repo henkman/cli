@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 )
@@ -11,13 +11,13 @@ import (
 func main() {
 	var raw []byte
 	if len(os.Args) == 2 {
-		_raw, err := ioutil.ReadFile(os.Args[1])
+		_raw, err := os.ReadFile(os.Args[1])
 		if err != nil {
 			log.Fatal(err)
 		}
 		raw = _raw
 	} else {
-		_raw, err := ioutil.ReadAll(os.Stdin)
+		_raw, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatal(err)
 		}
